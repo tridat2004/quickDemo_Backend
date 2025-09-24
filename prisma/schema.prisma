@@ -10,10 +10,9 @@ generator client {
 model Article {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
   title          String
-  url            String   @unique
+  
   thumbnail      String
   category       String
   published_time String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+   @@map("crawl_data_he")
 }

@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { MongoModule } from './database/mongo.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { ArticlesModule } from './articles/articles.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }), // đọc .env toàn project
-    MongoModule,
+    ConfigModule.forRoot({ 
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    PrismaModule, // Chỉ cần Prisma, bỏ MongoModule
+    ArticlesModule,
   ],
 })
 export class AppModule {}
