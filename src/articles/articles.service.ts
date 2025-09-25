@@ -1,137 +1,73 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
 import { getPaginationParams, buildPaginationMeta } from '../common/pagination/pagination.util';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class ArticlesService {
   constructor(private prisma: PrismaService) {}
 
-  async findFiltered(filters: FilterArticlesDto) {
-    try {
-      const {
-        category,
-        date,
-        search,
-        page = 1,
-        limit = 10,
-        sortBy = 'published_time',
-        sortOrder = 'desc',
-      } = filters;
-      const { skip, take, currentPage, itemsPerPage } = getPaginationParams({ page, limit, maxLimit: 100 });
-      const where: any = {};
-      if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
-      }
-      if (date) {
-        where.published_time = { contains: date, mode: 'insensitive' };
-      }
-      if (search) {
-        where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { category: { contains: search, mode: 'insensitive' } },
-          { url: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-      const orderBy: any = {};
-      const sortableFields = ['id', 'title', 'category', 'published_time', 'url'];
-      if (sortBy && sortableFields.includes(sortBy)) {
-        orderBy[sortBy] = sortOrder;
-      } else {
-        orderBy['published_time'] = sortOrder;
-      }
-      const [articles, totalCount] = await Promise.all([
-        this.prisma.article.findMany({
-          where,
-          orderBy,
-          skip,
-          take,
-          select: {
-            id: true,
-            title: true,
-            thumbnail: true,
-            category: true,
-            published_time: true,
-          },
-        }),
-        this.prisma.article.count({ where }),
-      ]);
-      const { totalPages, hasNextPage, hasPreviousPage } = buildPaginationMeta({ currentPage, itemsPerPage, totalItems: totalCount });
-      return {
-        success: true,
-        message: 'Articles retrieved successfully',
-        data: articles,
-        pagination: {
-          currentPage,
-          totalPages,
-          totalItems: totalCount,
-          itemsPerPage,
-          hasNextPage,
-          hasPreviousPage,
-        },
-        filters: {
-          category,
-          date,
-          search,
-          sortBy,
-          sortOrder,
-        },
-      };
-    } catch (error) {
-      console.error('Error in findFiltered:', error);
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve articles',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+
+  async findFiltered(filterDto: FilterArticlesDto) {
+  const { searchQuery, category, dateFrom, dateTo, page = 1, limit = 100 } = filterDto;
+
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+
+  if (searchQuery) {
+    where.OR = [
+      { title: { contains: searchQuery, mode: 'insensitive' } },
+      { category: { contains: searchQuery, mode: 'insensitive' } },
+    ];
+
+  if (category) {
+    where.category = { contains: category, mode: 'insensitive' };
   }
 
-  async testConnection() {
-    try {
-      const count = await this.prisma.article.count();
-      return {
-        success: true,
-        message: 'Database connection successful',
-        totalArticles: count,
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Database connection failed',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  if (dateFrom || dateTo) {
+  where.published_time = {};
+
+  if (dateFrom) {
+    where.published_time.gte = dateFrom; // string
   }
+  if (dateTo) {
+    where.published_time.lte = dateTo; // string
+  }
+}
 
-  async getCategories() {
-    try {
-      const categories = await this.prisma.article.findMany({
-        select: { category: true },
-        distinct: ['category'],
-        orderBy: { category: 'asc' },
-      });
 
-      return {
-        success: true,
-        data: categories.map((c) => c.category),
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Failed to retrieve categories',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+
+
+  const [articles, total] = await Promise.all([
+    this.prisma.article.findMany({
+      where,
+      orderBy: { published_time: 'desc' },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        title: true,
+        thumbnail: true,
+        category: true,
+        published_time: true,
+      },
+    }),
+    this.prisma.article.count({ where }),
+  ]);
+
+  return {
+  articles,
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+  hasNextPage: page * limit < total,
+  hasPreviousPage: page > 1,
+  };
+}
+
   }
 
    async getTotalArticles() {
@@ -155,4 +91,4 @@ export class ArticlesService {
     }
   }
 }
-  
+

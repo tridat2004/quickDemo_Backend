@@ -21,7 +21,6 @@ export class ArticlesController {
   async getCategories() {
     return this.articlesService.getCategories();
   }
-
   
   @Get('total')
   async getTotal() {
