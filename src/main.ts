@@ -24,5 +24,6 @@ async function bootstrap() {
   console.log(`   GET /crawl_data/test - Test database connection`);
   console.log(`   GET /crawl_data/categories - Get all categories`);
   console.log(`   GET /crawl_data/total - Get total number of articles`);
+  console.log(`   GET /crawl_data/search - Search articles (uses filter query params)`);
 }
 bootstrap();
