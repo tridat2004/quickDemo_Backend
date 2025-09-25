@@ -49,7 +49,6 @@ export class ArticlesService {
           select: {
             id: true,
             title: true,
-            
             thumbnail: true,
             category: true,
             published_time: true,
@@ -60,25 +59,15 @@ export class ArticlesService {
       const totalPages = Math.ceil(totalCount / take);
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
+
       return {
-        success: true,
-        message: 'Articles retrieved successfully',
-        data: articles,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalItems: totalCount,
-          itemsPerPage: take,
-          hasNextPage,
-          hasPreviousPage,
-        },
-        filters: {
-          category,
-          date,
-          search,
-          sortBy,
-          sortOrder,
-        },
+        articles,
+        total: totalCount,
+        page,
+        limit: take,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
       };
     } catch (error) {
       console.error('Error in findFiltered:', error);
@@ -130,6 +119,23 @@ export class ArticlesService {
         {
           success: false,
           message: 'Failed to retrieve categories',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getTotalArticles() {
+    try {
+      const totalCount = await this.prisma.article.count();
+      return { total: totalCount }; // Chỉ trả về { total: number }
+    } catch (error) {
+      console.error('Error in getTotalArticles:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to retrieve total article count',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
