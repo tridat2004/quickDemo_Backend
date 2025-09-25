@@ -134,7 +134,7 @@ export class ArticlesService {
     }
   }
 
-  async getTotalArticles() {
+   async getTotalArticles() {
     try {
       const totalCount = await this.prisma.article.count();
       return {
@@ -154,3 +154,5 @@ export class ArticlesService {
       );
     }
   }
+}
+  
