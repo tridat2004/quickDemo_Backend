@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
+import { getPaginationParams, buildPaginationMeta } from '../common/pagination/pagination.util';
 
 @Injectable()
 export class ArticlesService {
@@ -17,8 +18,7 @@ export class ArticlesService {
         sortBy = 'published_time',
         sortOrder = 'desc',
       } = filters;
-      const skip = (page - 1) * limit;
-      const take = Math.min(limit, 100);
+      const { skip, take, currentPage, itemsPerPage } = getPaginationParams({ page, limit, maxLimit: 100 });
       const where: any = {};
       if (category) {
         where.category = { contains: category, mode: 'insensitive' };
@@ -57,18 +57,16 @@ export class ArticlesService {
         }),
         this.prisma.article.count({ where }),
       ]);
-      const totalPages = Math.ceil(totalCount / take);
-      const hasNextPage = page < totalPages;
-      const hasPreviousPage = page > 1;
+      const { totalPages, hasNextPage, hasPreviousPage } = buildPaginationMeta({ currentPage, itemsPerPage, totalItems: totalCount });
       return {
         success: true,
         message: 'Articles retrieved successfully',
         data: articles,
         pagination: {
-          currentPage: page,
+          currentPage,
           totalPages,
           totalItems: totalCount,
-          itemsPerPage: take,
+          itemsPerPage,
           hasNextPage,
           hasPreviousPage,
         },
