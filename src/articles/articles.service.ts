@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
+import { getPaginationParams, buildPaginationMeta } from '../common/pagination/pagination.util';
 
 @Injectable()
 export class ArticlesService {
@@ -17,8 +18,7 @@ export class ArticlesService {
         sortBy = 'published_time',
         sortOrder = 'desc',
       } = filters;
-      const skip = (page - 1) * limit;
-      const take = Math.min(limit, 100);
+      const { skip, take, currentPage, itemsPerPage } = getPaginationParams({ page, limit, maxLimit: 100 });
       const where: any = {};
       if (category) {
         where.category = { contains: category, mode: 'insensitive' };
@@ -56,18 +56,26 @@ export class ArticlesService {
         }),
         this.prisma.article.count({ where }),
       ]);
-      const totalPages = Math.ceil(totalCount / take);
-      const hasNextPage = page < totalPages;
-      const hasPreviousPage = page > 1;
-
+      const { totalPages, hasNextPage, hasPreviousPage } = buildPaginationMeta({ currentPage, itemsPerPage, totalItems: totalCount });
       return {
-        articles,
-        total: totalCount,
-        page,
-        limit: take,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
+        success: true,
+        message: 'Articles retrieved successfully',
+        data: articles,
+        pagination: {
+          currentPage,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage,
+          hasNextPage,
+          hasPreviousPage,
+        },
+        filters: {
+          category,
+          date,
+          search,
+          sortBy,
+          sortOrder,
+        },
       };
     } catch (error) {
       console.error('Error in findFiltered:', error);
@@ -129,7 +137,11 @@ export class ArticlesService {
   async getTotalArticles() {
     try {
       const totalCount = await this.prisma.article.count();
-      return { total: totalCount }; // Chỉ trả về { total: number }
+      return {
+        success: true,
+        message: 'Total articles count retrieved successfully',
+        totalItems: totalCount,
+      };
     } catch (error) {
       console.error('Error in getTotalArticles:', error);
       throw new HttpException(
@@ -142,4 +154,3 @@ export class ArticlesService {
       );
     }
   }
-}

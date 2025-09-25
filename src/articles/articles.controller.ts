@@ -1,6 +1,7 @@
 import { Controller, Get, Query, ValidationPipe } from '@nestjs/common';
 import { ArticlesService } from './articles.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
+import { filter } from 'rxjs';
 
 interface TotalResponse{
   total: number;
@@ -45,5 +46,10 @@ export class ArticlesController {
   @Get('total')
   async getTotal(): Promise<{total: number}>{
     return this.articlesService.getTotalArticles();
+  }
+  
+  @Get(`search`)
+  async searchArticles(@Query(ValidationPipe) filterDto: FilterArticlesDto) {
+    return this.articlesService.findFiltered(filterDto);
   }
 }
