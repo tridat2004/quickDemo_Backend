@@ -13,6 +13,6 @@ model Article {
   
   thumbnail      String
   category       String
-  published_time String
+  published_time DateTime
    @@map("crawl_data_he")
 }
