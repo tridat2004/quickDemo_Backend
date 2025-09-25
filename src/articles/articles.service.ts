@@ -136,4 +136,26 @@ export class ArticlesService {
       );
     }
   }
+
+  async getTotalArticles() {
+    try {
+      const totalCount = await this.prisma.article.count();
+
+      return {
+        success: true,
+        message: 'Total articles count retrieved successfully',
+        totalItems: totalCount,
+      };
+    } catch (error) {
+      console.error('Error in getTotalArticles:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to retrieve total article count',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
