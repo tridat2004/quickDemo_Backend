@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
+import { getPaginationParams, buildPaginationMeta } from '../common/pagination/pagination.util';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class ArticlesService {
   constructor(private prisma: PrismaService) {}
+
 
   async findFiltered(filterDto: FilterArticlesDto) {
   const { searchQuery, category, dateFrom, dateTo, page = 1, limit = 100 } = filterDto;
@@ -18,7 +21,6 @@ export class ArticlesService {
       { title: { contains: searchQuery, mode: 'insensitive' } },
       { category: { contains: searchQuery, mode: 'insensitive' } },
     ];
-  }
 
   if (category) {
     where.category = { contains: category, mode: 'insensitive' };
@@ -34,6 +36,7 @@ export class ArticlesService {
     where.published_time.lte = dateTo; // string
   }
 }
+
 
 
 
@@ -65,4 +68,26 @@ export class ArticlesService {
   };
 }
 
+  }
+
+  async getTotalArticles() {
+    try {
+      const totalCount = await this.prisma.article.count();
+      return {
+        success: true,
+        message: 'Total articles count retrieved successfully',
+        totalItems: totalCount,
+      };
+    } catch (error) {
+      console.error('Error in getTotalArticles:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to retrieve total article count',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
