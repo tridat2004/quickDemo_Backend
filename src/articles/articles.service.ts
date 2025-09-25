@@ -49,7 +49,6 @@ export class ArticlesService {
           select: {
             id: true,
             title: true,
-            
             thumbnail: true,
             category: true,
             published_time: true,
@@ -138,7 +137,6 @@ export class ArticlesService {
   async getTotalArticles() {
     try {
       const totalCount = await this.prisma.article.count();
-
       return {
         success: true,
         message: 'Total articles count retrieved successfully',
@@ -156,4 +154,3 @@ export class ArticlesService {
       );
     }
   }
-}
