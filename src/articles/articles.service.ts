@@ -1,19 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilterArticlesDto } from './dto/filter-articles.dto';
-import { getPaginationParams, buildPaginationMeta } from '../common/pagination/pagination.util';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class ArticlesService {
   constructor(private prisma: PrismaService) { }
 
-
   // Hàm helper để parse date từ string
   private parseVietnameseDate(dateString: string): Date | null {
     try {
       // Format: "Thứ ba, 23/9/2025, 10:31 (GMT+7)"
-      // Tách lấy phần ngày tháng
       const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (!dateMatch) return null;
 
@@ -32,6 +29,7 @@ export class ArticlesService {
       return null;
     }
   }
+
   private formatDateForDisplay(dateString: string): string {
     const date = this.parseVietnameseDate(dateString);
     if (!date) return dateString;
@@ -44,12 +42,11 @@ export class ArticlesService {
   }
 
   async findFiltered(filterDto: FilterArticlesDto) {
-    const { searchQuery, category, dateFrom, dateTo, page = 1, limit = 100 } = filterDto;
+    const { searchQuery, category, dateFrom, dateTo, page = 1, limit = 12 } = filterDto;
 
-    const skip = (page - 1) * limit;
     const where: any = {};
 
-    // Build search conditions
+    // Build search conditions - Search toàn bộ database
     if (searchQuery) {
       where.OR = [
         { title: { contains: searchQuery, mode: 'insensitive' } },
@@ -61,10 +58,10 @@ export class ArticlesService {
       where.category = { contains: category, mode: 'insensitive' };
     }
 
-    // Get all articles first
-    let allArticles = await this.prisma.article.findMany({
-      where: searchQuery || category ? where : {},
-      orderBy: { id: 'desc' }, // Sắp xếp theo id thay vì published_time
+    // Lấy tất cả articles phù hợp với search và category filter
+    let allMatchingArticles = await this.prisma.article.findMany({
+      where,
+      orderBy: { id: 'desc' },
       select: {
         id: true,
         title: true,
@@ -74,9 +71,9 @@ export class ArticlesService {
       },
     });
 
-    // Filter by date in memory (since published_time is string)
+    // Filter by date trong memory (vì published_time là string)
     if (dateFrom || dateTo) {
-      allArticles = allArticles.filter(article => {
+      allMatchingArticles = allMatchingArticles.filter(article => {
         const articleDate = this.parseVietnameseDate(article.published_time);
         if (!articleDate) return false;
 
@@ -90,7 +87,7 @@ export class ArticlesService {
 
         if (dateTo) {
           const toDate = new Date(dateTo);
-          toDate.setHours(23, 59, 59, 999); // End of day
+          toDate.setHours(23, 59, 59, 999);
           matchDateTo = articleDate <= toDate;
         }
 
@@ -98,25 +95,29 @@ export class ArticlesService {
       });
     }
 
+    // Tính total sau khi filter
+    const total = allMatchingArticles.length;
+
+    // Apply pagination AFTER filtering
+    const skip = (page - 1) * limit;
+    const paginatedArticles = allMatchingArticles.slice(skip, skip + limit);
 
     // Format published_time cho frontend
-    const formattedArticles = allArticles.map(article => ({
+    const formattedArticles = paginatedArticles.map(article => ({
       ...article,
-      published_time: article.published_time, // Giữ nguyên format gốc
-      formatted_date: this.formatDateForDisplay(article.published_time) // Thêm field mới
+      published_time: article.published_time,
+      formatted_date: this.formatDateForDisplay(article.published_time)
     }));
 
-    // Apply pagination
-    const total = formattedArticles.length;
-    const paginatedArticles = formattedArticles.slice(skip, skip + limit);
+    const totalPages = Math.ceil(total / limit);
 
     return {
-      articles: paginatedArticles,
+      articles: formattedArticles,
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      hasNextPage: page * limit < total,
+      totalPages,
+      hasNextPage: page < totalPages,
       hasPreviousPage: page > 1,
     };
   }
@@ -141,5 +142,32 @@ export class ArticlesService {
       );
     }
   }
-}
 
+  // Hàm mới: Lấy tất cả articles cho category statistics (không phân trang)
+  async getAllForStats() {
+    try {
+      const articles = await this.prisma.article.findMany({
+        select: {
+          id: true,
+          category: true,
+        },
+      });
+
+      return {
+        success: true,
+        articles,
+        total: articles.length,
+      };
+    } catch (error) {
+      console.error('Error in getAllForStats:', error);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Failed to retrieve articles for statistics',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+}
