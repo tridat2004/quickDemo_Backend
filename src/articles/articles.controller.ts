@@ -8,12 +8,25 @@ export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
   @Get('filter')
-  async getFiltered(
-    @Query(ValidationPipe) filterDto: FilterArticlesDto,
-  ) {
+  async getFiltered(@Query(ValidationPipe) filterDto: FilterArticlesDto) {
     return this.articlesService.findFiltered(filterDto);
   }
+
+  @Get('test')
+  async testConnection() {
+    return this.articlesService.testConnection();
+  }
+
+  @Get('categories')
+  async getCategories() {
+    return this.articlesService.getCategories();
+  }
   
+  @Get('total')
+  async getTotal() {
+    return this.articlesService.getTotalArticles();
+  }
+
   @Get(`search`)
   async searchArticles(@Query(ValidationPipe) filterDto: FilterArticlesDto) {
     return this.articlesService.findFiltered(filterDto);
