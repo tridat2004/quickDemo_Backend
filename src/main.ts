@@ -4,12 +4,17 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
  
-  app.enableCors({
-    origin: 'http://localhost:3000', 
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+  // app.enableCors({
+  //   origin: 'http://localhost:3000', 
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
 
-  }); 
+  // }); 
+  app.enableCors({
+  origin: ['https://fe-quick-demo-wxgt.vercel.app'], // domain FE Vercel
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+});
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true, // ép kiểu string -> number dựa theo DTO
